@@ -15,3 +15,11 @@ print(df_fusionado)
 #Tratamiento de datos
 df_fusionado['Fecha'] = pd.to_datetime(df_fusionado['Fecha'])
 print(df_fusionado)
+
+#Análisis de ventas
+print("Tabla cantidad de productos totales")
+productoMasVendido = df_fusionado.groupby('Producto')['Cantidad'].sum()
+print(productoMasVendido)
+mesVentas = df_fusionado.groupby(df_fusionado['Fecha'].dt.month_name())['Total Venta'].sum()
+
+print(mesVentas.sort_values(ascending=False))
