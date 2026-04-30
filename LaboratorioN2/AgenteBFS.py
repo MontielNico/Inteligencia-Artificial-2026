@@ -1,0 +1,38 @@
+from AgenteBusqueda import Nodo, AgenteBusqueda
+from collections import deque
+
+class AgenteBFS(AgenteBusqueda):
+    def buscar(self):
+        nodo_raiz = Nodo(self.entorno.start)
+        
+        if self.entorno.es_objetivo(nodo_raiz.estado):
+            self.camino_solucion = nodo_raiz.obtener_camino()
+            return self.camino_solucion
+            
+        frontera = deque()
+        frontera.append(nodo_raiz)
+        
+        estados_en_frontera = {nodo_raiz.estado}
+        
+        explorada = set()
+        
+        while len(frontera) > 0: 
+            
+            nodo = frontera.popleft() #popleft() para representar una cola FIFO
+            estados_en_frontera.remove(nodo.estado)
+            
+            explorada.add(nodo.estado)
+            
+            for hijo in self.expandir(nodo):
+                
+                if hijo.estado not in explorada and hijo.estado not in estados_en_frontera:
+                    if self.entorno.es_objetivo(hijo.estado):
+                        # Guardamos el camino encontrado en la clase y lo retornamos
+                        self.camino_solucion = hijo.obtener_camino()
+                        return self.camino_solucion
+                    
+                    frontera.append(hijo)
+                    estados_en_frontera.add(hijo.estado)
+                    
+        # devolver fallo
+        return None
