@@ -29,7 +29,8 @@ P_BASE = potenciaBase(1.225, 0.4, 40, 12)  # MW por molino
 #   R = 40 m (radio del rotor)
 #   A = πR2 (área generada por el rotor)
 #   v = 12 m/s (velocidad del viento)
-MAXIMO_TEORICO = (P_BASE * N_MOLINOS) / 1000000
+
+# MAXIMO_TEORICO = (P_BASE * N_MOLINOS) / 1000000
 
 # ==========================================
 # CONFIGURACIÓN DE DEAP (POBLACIÓN, TOOLBOX)
@@ -241,9 +242,7 @@ def ejecutar_una_vez(verbose=False):
 
     print("=" * 40)
     print("🥇 ALGORITMO GENETICO TERMINADO")
-    print(
-        f"Mejor Energía Obtenida: {energia_maxima:.2f} MW (Máximo teórico: {MAXIMO_TEORICO} MW)"
-    )
+    print(f"Mejor Energía Obtenida: {energia_maxima:.2f})")
     print("=" * 40)
 
     return logbook, campeon
@@ -351,11 +350,11 @@ def graficar_convergencia_estadistica(all_maximos, all_promedios, n_runs):
 
     # --- Referencia teórica ---
     ax.axhline(
-        y=MAXIMO_TEORICO,
+        y=53,
         color="red",
         linestyle=":",
         linewidth=1.5,
-        label=f"Máximo Teórico ({MAXIMO_TEORICO} MW)",
+
     )
 
     ax.set_title(
