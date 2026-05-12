@@ -408,7 +408,7 @@ def graficar_mapa_campeon(mejor_campeon):
         matriz_terreno, cmap="YlGn", cbar=False, linewidths=0.5, linecolor="gray"
     )
 
-    sprite = plt.imread("ProyectoAerogeneradores\images\molino.png")
+    sprite = plt.imread(r"images\molino.png")
 
     for x, y in mejor_campeon:
         plt.imshow(sprite, extent=[x + 0.1, x + 0.9, y + 0.9, y + 0.1], zorder=10)
