@@ -1,16 +1,14 @@
-from numpy import true_divide
 from EntornoLaberinto import LaberintoEnv
 from AgenteBusquedaInf import AgenteGreedy, AgenteAEstrella
 
 maze = [
-    ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
-    ["#", "S", "#", " ", " ", " ", " ", " ", "#", "G", "#"],
-    ["#", " ", "#", " ", "#", "#", "#", " ", "#", " ", "#"],
-    ["#", " ", "#", " ", "#", " ", " ", " ", "#", " ", "#"],
-    ["#", " ", " ", " ", "#", " ", "#", "#", "#", " ", "#"],
-    ["#", "#", "#", " ", "#", " ", " ", " ", " ", " ", "#"],
-    ["#", " ", " ", " ", " ", " ", "#", "#", "#", "#", "#"],
-    ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
+    ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
+    ["#", "S", " ", " ", " ", " ", " ", " ", "#", " ", " ", " ", " ", " ", "#"],
+    ["#", " ", "#", "#", "#", "#", "#", " ", "#", " ", "#", "#", "#", " ", "#"],
+    ["#", " ", " ", " ", " ", " ", "#", " ", "#", " ", "#", " ", " ", " ", "#"],
+    ["#", "#", "#", " ", "#", " ", "#", " ", "#", " ", "#", " ", "#", "#", "#"],
+    ["#", " ", " ", " ", "#", " ", " ", " ", "#", " ", " ", " ", "#", "G", "#"],
+    ["#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#", "#"],
 ]
 
 entorno = LaberintoEnv(maze)
@@ -18,23 +16,37 @@ entorno = LaberintoEnv(maze)
 agenteGreedy = AgenteGreedy(entorno)
 agenteAEstrella = AgenteAEstrella(entorno)
 
-if agenteGreedy.buscar() == True:
+solucion_greedy = agenteGreedy.buscar()
+print("--- RESULTADOS GREEDY ---")
+if solucion_greedy:
     camino = agenteGreedy.camino_solucion
     entorno.imprimir_camino(camino)
-    print("Nodos expandidos:", agenteGreedy.nodos_expandidos)
     print("Camino encontrado:", agenteGreedy.camino_solucion)
+    print("Costo Camino Encontrado:", len(agenteGreedy.camino_solucion))
 else:
-    print("No se encontro solucion.")
-print("---------------------------------------------------------")
+    print("NO SE ENCONTRO SOLUCION. Mostrando el recorrido explorado:")
+    entorno.imprimir_camino(agenteGreedy.decisiones)
 
-if agenteAEstrella.buscar() == True:
+print("Nodos expandidos:", agenteGreedy.nodos_expandidos)
+print("Retrocesos:", agenteGreedy.cantidad_retrocesos)
+print("Total de decisiones:", len(agenteGreedy.decisiones))
+print("Decisiones:", agenteGreedy.decisiones)
+
+print("\n---------------------------------------------------------\n")
+
+solucion_a_estrella = agenteAEstrella.buscar()
+print("--- RESULTADOS A* ---")
+if solucion_a_estrella:
     camino = agenteAEstrella.camino_solucion
     entorno.imprimir_camino(camino)
-    print("Nodos expandidos:", agenteAEstrella.nodos_expandidos)
     print("Camino encontrado:", agenteAEstrella.camino_solucion)
     print("Costo Camino Encontrado:", len(agenteAEstrella.camino_solucion))
-    print("Retrocesos:", agenteAEstrella.cantidad_retrocesos)
-    print("Total de decisiones:", len(agenteAEstrella.decisiones))
-    print("Decisiones:", agenteAEstrella.decisiones)
 else:
-    print("No se encontro solucion.")
+    print("NO SE ENCONTRO SOLUCION. Mostrando el recorrido explorado:")
+    entorno.imprimir_camino(agenteAEstrella.decisiones)
+
+print("Nodos expandidos:", agenteAEstrella.nodos_expandidos)
+print("Retrocesos:", agenteAEstrella.cantidad_retrocesos)
+print("Total de decisiones:", len(agenteAEstrella.decisiones))
+print("Decisiones:", agenteAEstrella.decisiones)
+

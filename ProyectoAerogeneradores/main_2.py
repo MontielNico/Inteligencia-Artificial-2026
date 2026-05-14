@@ -202,7 +202,7 @@ toolbox.register("mate", cruce_un_punto)
 toolbox.register("mutate", mutacion_parque, probMutacion=0.1)
 # Mutacion_normal / #mutacion_desplazamiento
 # Probabilidad basada en el individuo mismo, ya que es el individuo seleccionado
-toolbox.register("select", tools.selTournament, tournsize=3)
+toolbox.register("select", tools.selTournament, tournsize=2)
 
 
 # ==========================================
@@ -244,20 +244,20 @@ def correr_analisis_comparativo():
     y genera gráficos comparativos y una tabla resumen.
     """
     escenarios = [
-        {"nombre": "Estándar (30, 0.7, 0.3)", "pop": 30, "cx": 0.7, "mut": 0.3},
-        {"nombre": "Alta Población (50, 0.7, 0.3)", "pop": 50, "cx": 0.7, "mut": 0.3},
-        {"nombre": "Alta Cruce (30, 0.8, 0.2)", "pop": 30, "cx": 0.8, "mut": 0.2},
-        {"nombre": "Alta Mutación (30, 0.2, 0.8)", "pop": 30, "cx": 0.2, "mut": 0.8}
+        {"nombre": "Estándar (30, 0.7, 0.3)", "pop": 30, "cx": 0.7, "mut": 0.01},
+        {"nombre": "Alta Población (50, 0.7, 0.3)", "pop": 10, "cx": 0.7, "mut": 0.01},
+        {"nombre": "Alta Cruce (30, 0.8, 0.2)", "pop": 30, "cx": 0.9, "mut": 0.01},
+        {"nombre": "Alta Mutación (30, 0.2, 0.8)", "pop": 30, "cx": 0.7, "mut": 0.2},
     ]
-    
-    N_RUNS = 30 # Ejecuciones por cada escenario para validez estadística
+
+    N_RUNS = 30  # Ejecuciones por cada escenario para validez estadística
     N_GEN = 30  # Generaciones por cada ejecución
     resumen_estadistico = []
     todos_los_resultados = {}
     todas_las_convergencias = {}
 
     # Óptimo de referencia para el Hit Rate (Teórico sin estelas)
-    OPTIMO_REF = (N_MOLINOS * P_BASE) / 1000000 
+    OPTIMO_REF = (N_MOLINOS * P_BASE) / 1000000
 
     print(f"Iniciando Benchmarking: {len(escenarios)} escenarios x {N_RUNS} runs...")
 
@@ -265,42 +265,46 @@ def correr_analisis_comparativo():
         print(f"\n🧪 Analizando escenario: {esc['nombre']}...")
         finales_escenario = []
         convergencias_escenario = []
-        
+
         start_time_escenario = time.time()
 
         for r in range(1, N_RUNS + 1):
-            log, campeon = ejecutar_una_vez(esc['pop'], esc['cx'], esc['mut'], N_GEN)
+            log, campeon = ejecutar_una_vez(esc["pop"], esc["cx"], esc["mut"], N_GEN)
             finales_escenario.append(campeon.fitness.values[0])
             convergencias_escenario.append(log.select("Maximo"))
             if r % 10 == 0:
                 print(f"  Progreso: {r}/{N_RUNS} ejecuciones completadas.")
-        
+
         tiempo_total = time.time() - start_time_escenario
-        
+
         # --- Cálculo de Métricas ---
         mejor = np.max(finales_escenario)
         media = np.mean(finales_escenario)
         std = np.std(finales_escenario)
-        
+
         # Hit Rate: % de veces que llega al óptimo (con margen de error de 0.01)
         hits = sum(1 for f in finales_escenario if f >= (OPTIMO_REF - 0.01))
         hit_rate = (hits / N_RUNS) * 100
-        
+
         # Confiabilidad: Proporción entre media y mejor resultado
         confiabilidad = (media / mejor * 100) if mejor > 0 else 0
-        
-        resumen_estadistico.append({
-            "Config": esc['nombre'],
-            "Mejor": mejor,
-            "Media": media,
-            "Std": std,
-            "Hit Rate": hit_rate,
-            "Confiabilidad": confiabilidad,
-            "T. Total": tiempo_total
-        })
 
-        todos_los_resultados[esc['nombre']] = finales_escenario
-        todas_las_convergencias[esc['nombre']] = np.mean(convergencias_escenario, axis=0)
+        resumen_estadistico.append(
+            {
+                "Config": esc["nombre"],
+                "Mejor": mejor,
+                "Media": media,
+                "Std": std,
+                "Hit Rate": hit_rate,
+                "Confiabilidad": confiabilidad,
+                "T. Total": tiempo_total,
+            }
+        )
+
+        todos_los_resultados[esc["nombre"]] = finales_escenario
+        todas_las_convergencias[esc["nombre"]] = np.mean(
+            convergencias_escenario, axis=0
+        )
 
     # Imprimir Tabla y generar gráficos
     imprimir_tabla_resumen(resumen_estadistico)
@@ -309,41 +313,49 @@ def correr_analisis_comparativo():
 
 def imprimir_tabla_resumen(datos):
     """Muestra una tabla formateada con los resultados del análisis."""
-    print("\n" + "="*115)
-    print(f"{'ESCENARIO':<30} | {'MEJOR (MW)':<10} | {'MEDIA (MW)':<10} | {'STD':<8} | {'HIT%':<7} | {'CONF%':<7} | {'TIEMPO'}")
+    print("\n" + "=" * 115)
+    print(
+        f"{'ESCENARIO':<30} | {'MEJOR (MW)':<10} | {'MEDIA (MW)':<10} | {'STD':<8} | {'HIT%':<7} | {'CONF%':<7} | {'TIEMPO'}"
+    )
     print("-" * 115)
     for d in datos:
-        print(f"{d['Config']:<30} | {d['Mejor']:<10.3f} | {d['Media']:<10.3f} | {d['Std']:<8.3f} | {d['Hit Rate']:<6.1f}% | {d['Confiabilidad']:<6.1f}% | {d['T. Total']:>6.2f}s")
-    print("="*115 + "\n")
+        print(
+            f"{d['Config']:<30} | {d['Mejor']:<10.3f} | {d['Media']:<10.3f} | {d['Std']:<8.3f} | {d['Hit Rate']:<6.1f}% | {d['Confiabilidad']:<6.1f}% | {d['T. Total']:>6.2f}s"
+        )
+    print("=" * 115 + "\n")
 
 
 def graficar_resultados_comparativos(resultados, convergencias):
     """Genera y guarda los gráficos de la comparativa."""
-    
+
     # 1. Boxplot Comparativo (Distribución de soluciones finales)
     plt.figure(figsize=(12, 7))
     sns.boxplot(data=list(resultados.values()), palette="Set2")
     plt.xticks(range(len(resultados)), list(resultados.keys()), rotation=15)
-    plt.title("Comparativa Estadística: Calidad de Solución Final por Escenario", fontsize=13)
+    plt.title(
+        "Comparativa Estadística: Calidad de Solución Final por Escenario", fontsize=13
+    )
     plt.ylabel("Producción de Energía (MW)")
-    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.grid(True, linestyle="--", alpha=0.6)
     plt.tight_layout()
     plt.savefig("7_Comparativa_Boxplot.png", dpi=300)
     print("Gráfico guardado: 7_Comparativa_Boxplot.png")
-    
+
     # 2. Curvas de Convergencia (Velocidad de aprendizaje)
     plt.figure(figsize=(12, 7))
     for nombre, curva in convergencias.items():
         plt.plot(curva, label=nombre, linewidth=2.5)
-    plt.title("Comparativa: Velocidad de Convergencia (Media de 30 ejecuciones)", fontsize=13)
+    plt.title(
+        "Comparativa: Velocidad de Convergencia (Media de 30 ejecuciones)", fontsize=13
+    )
     plt.xlabel("Generación")
     plt.ylabel("Energía Máxima (MW)")
     plt.legend()
-    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.grid(True, linestyle="--", alpha=0.6)
     plt.tight_layout()
     plt.savefig("8_Comparativa_Convergencia.png", dpi=300)
     print("Gráfico guardado: 8_Comparativa_Convergencia.png")
-    
+
     plt.show()
 
 
