@@ -20,7 +20,7 @@ def potenciaBase(p, Cv, R, V):
 GRID_SIZE = 20  # El terreno es una cuadrícula de 20x20 celdas discretas
 N_MOLINOS = 25  # Número fijo de aerogeneradores a colocar
 BETA = 0.08  # 8% de reducción por cada estela
-P_BASE = potenciaBase(1.225, 0.4, 40, 12)  # MW por molino
+P_BASE = potenciaBase(1.225, 0.40, 40, 12)  # MW por molino
 # Potencia base un aerogenerador sin estelas: 2.1280394653180403 Mw
 # Potencia maxima teorica (25 molinos sin estelas): 53.20098663295101 Mw
 # Todos estos datos recuparados de la siguiente ecuación: P = 0.5 * p * A * Cv * V^3
@@ -408,7 +408,7 @@ def graficar_mapa_campeon(mejor_campeon):
         matriz_terreno, cmap="YlGn", cbar=False, linewidths=0.5, linecolor="gray"
     )
 
-    sprite = plt.imread(r"images\molino.png")
+    sprite = plt.imread(r"images/molino.png")
 
     for x, y in mejor_campeon:
         plt.imshow(sprite, extent=[x + 0.1, x + 0.9, y + 0.9, y + 0.1], zorder=10)

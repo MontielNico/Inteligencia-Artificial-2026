@@ -1,3 +1,4 @@
+from deap import benchmarks
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -21,7 +22,7 @@ def potenciaBase(p, Cv, R, V):
 GRID_SIZE = 20  # El terreno es una cuadrícula de 20x20 celdas discretas
 N_MOLINOS = 25  # Número fijo de aerogeneradores a colocar
 BETA = 0.08  # 8% de reducción por cada estela
-P_BASE = potenciaBase(1.225, 0.4, 40, 12)  # MW por molino
+P_BASE = potenciaBase(1.225, 0.40, 40, 12)  # MW por molino
 # Potencia base un aerogenerador sin estelas: 2.1280394653180403 Mw
 # Potencia maxima teorica (25 molinos sin estelas): 53.20098663295101 Mw
 # Todos estos datos recuparados de la siguiente ecuación: P = 0.5 * p * A * Cv * V^3
@@ -70,7 +71,7 @@ toolbox.register("poblacion", tools.initRepeat, list, toolbox.individuo)
 def calculo_fitness(individuo):
     """Calcula la energía total producida por el parque considerando las estelas. Función de FITNESS."""
 
-    potenciaBas = potenciaBase(1.225, 0.4, 40, 12)
+    potenciaBas = P_BASE
     potenciaTotal = 0.0
     set_individuo = set(individuo)
 
@@ -202,7 +203,7 @@ toolbox.register("mate", cruce_un_punto)
 toolbox.register("mutate", mutacion_parque, probMutacion=0.1)
 # Mutacion_normal / #mutacion_desplazamiento
 # Probabilidad basada en el individuo mismo, ya que es el individuo seleccionado
-toolbox.register("select", tools.selTournament, tournsize=2)
+toolbox.register("select", tools.selTournament, tournsize=3)
 
 
 # ==========================================
@@ -243,12 +244,16 @@ def correr_analisis_comparativo():
     Orquestador que corre múltiples ejecuciones para distintos escenarios
     y genera gráficos comparativos y una tabla resumen.
     """
+    estandar = [30,0.7,0.01]
+    alta_poblacion = 50
+    alta_cruce = 0.8
+    alta_mutacion = 0.03
     escenarios = [
-        {"nombre": "Estándar (30, 0.7, 0.3)", "pop": 30, "cx": 0.7, "mut": 0.01},
-        {"nombre": "Alta Población (50, 0.7, 0.3)", "pop": 10, "cx": 0.7, "mut": 0.01},
-        {"nombre": "Alta Cruce (30, 0.8, 0.2)", "pop": 30, "cx": 0.9, "mut": 0.01},
-        {"nombre": "Alta Mutación (30, 0.2, 0.8)", "pop": 30, "cx": 0.7, "mut": 0.2},
-    ]
+        {"nombre": f"Estándar ({estandar[0]}, {estandar[1]}, {estandar[2]})", "pop": estandar[0], "cx": estandar[1], "mut": estandar[2]},
+        {"nombre": f"Alta Población ({alta_poblacion}, {estandar[1]}, {estandar[2]})", "pop": alta_poblacion, "cx": estandar[1], "mut": estandar[2]},
+        {"nombre": f"Alta Cruce ({estandar[0]}, {alta_cruce}, {estandar[2]})", "pop": estandar[0], "cx": alta_cruce, "mut": estandar[2]},
+        {"nombre": f"Alta Mutación ({estandar[0]}, {estandar[1]}, {alta_mutacion})", "pop": estandar[0], "cx": estandar[1], "mut": alta_mutacion},
+    ] 
 
     N_RUNS = 30  # Ejecuciones por cada escenario para validez estadística
     N_GEN = 30  # Generaciones por cada ejecución
