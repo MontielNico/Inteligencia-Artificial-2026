@@ -208,10 +208,10 @@ toolbox.register("select", tools.selTournament, tournsize=3)
 # ==========================================
 def ejecutar_una_vez(verbose=False):
     # Parámetros del experimento
-    TAMANO_POBLACION = 30
-    GENERACIONES = 30
-    PROB_CRUCE = 0.7
-    PROB_MUTACION = 0.3
+    TAMANO_POBLACION = 20
+    GENERACIONES = 40
+    PROB_CRUCE = 0.5
+    PROB_MUTACION = 0.02
 
     poblacion = toolbox.poblacion(n=TAMANO_POBLACION)
     salon_fama = tools.HallOfFame(1)  # Guardará el mejor de todos los tiempos

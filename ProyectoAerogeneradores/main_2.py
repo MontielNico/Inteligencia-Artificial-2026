@@ -244,22 +244,25 @@ def correr_analisis_comparativo():
     Orquestador que corre múltiples ejecuciones para distintos escenarios
     y genera gráficos comparativos y una tabla resumen.
     """
-    estandar = [30,0.7,0.01]
-    alta_poblacion = 50
+    estandar = [20,0.5,0.03]
+    alta_poblacion = 60
     alta_cruce = 0.8
-    alta_mutacion = 0.03
+    alta_mutacion = 0.3
     escenarios = [
         {"nombre": f"Estándar ({estandar[0]}, {estandar[1]}, {estandar[2]})", "pop": estandar[0], "cx": estandar[1], "mut": estandar[2]},
-        {"nombre": f"Alta Población ({alta_poblacion}, {estandar[1]}, {estandar[2]})", "pop": alta_poblacion, "cx": estandar[1], "mut": estandar[2]},
         {"nombre": f"Alta Cruce ({estandar[0]}, {alta_cruce}, {estandar[2]})", "pop": estandar[0], "cx": alta_cruce, "mut": estandar[2]},
+        {"nombre": f"Alta Población ({alta_poblacion}, {estandar[1]}, {estandar[2]})", "pop": alta_poblacion, "cx": estandar[1], "mut": estandar[2]},
         {"nombre": f"Alta Mutación ({estandar[0]}, {estandar[1]}, {alta_mutacion})", "pop": estandar[0], "cx": estandar[1], "mut": alta_mutacion},
     ] 
 
     N_RUNS = 30  # Ejecuciones por cada escenario para validez estadística
-    N_GEN = 30  # Generaciones por cada ejecución
+    N_GEN = 40  # Generaciones por cada ejecución
     resumen_estadistico = []
     todos_los_resultados = {}
     todas_las_convergencias = {}
+    
+    mejor_campeon_alta_mutacion = None
+    mejor_fitness_alta_mutacion = -np.inf
 
     # Óptimo de referencia para el Hit Rate (Teórico sin estelas)
     OPTIMO_REF = (N_MOLINOS * P_BASE) / 1000000
@@ -275,8 +278,15 @@ def correr_analisis_comparativo():
 
         for r in range(1, N_RUNS + 1):
             log, campeon = ejecutar_una_vez(esc["pop"], esc["cx"], esc["mut"], N_GEN)
-            finales_escenario.append(campeon.fitness.values[0])
+            fitness_actual = campeon.fitness.values[0]
+            finales_escenario.append(fitness_actual)
             convergencias_escenario.append(log.select("Maximo"))
+            
+            if "Alta Mutación" in esc["nombre"]:
+                if fitness_actual > mejor_fitness_alta_mutacion:
+                    mejor_fitness_alta_mutacion = fitness_actual
+                    mejor_campeon_alta_mutacion = campeon
+                    
             if r % 10 == 0:
                 print(f"  Progreso: {r}/{N_RUNS} ejecuciones completadas.")
 
@@ -314,6 +324,9 @@ def correr_analisis_comparativo():
     # Imprimir Tabla y generar gráficos
     imprimir_tabla_resumen(resumen_estadistico)
     graficar_resultados_comparativos(todos_los_resultados, todas_las_convergencias)
+
+    if mejor_campeon_alta_mutacion is not None:
+        graficar_mapa_campeon(mejor_campeon_alta_mutacion)
 
 
 def imprimir_tabla_resumen(datos):
@@ -490,7 +503,6 @@ def graficar_boxplot_finales(mejores_finales):
         boxprops=dict(facecolor="lightgreen", color="green"),
         medianprops=dict(color="darkgreen", linewidth=2),
     )
-    ax.axhline(y=53.25, color="red", linestyle=":", label="Máximo Teórico")
     ax.set_title(
         "Distribución de Mejores Soluciones Finales\n(30 ejecuciones independientes)"
     )
