@@ -10,35 +10,21 @@ import time
 # ==========================================
 # CONSTANTES DEL PROBLEMA
 # ==========================================
-
-
 def potenciaBase(p, Cv, R, V):
     """Función para el calculo de Potencia Base de un Aerogenerador"""
 
     area = math.pi * (R**2)
     return 0.5 * p * area * Cv * (V**3)
 
-
-GRID_SIZE = 20  # El terreno es una cuadrícula de 20x20 celdas discretas
-N_MOLINOS = 25  # Número fijo de aerogeneradores a colocar
-BETA = 0.08  # 8% de reducción por cada estela
-P_BASE = potenciaBase(1.225, 0.40, 40, 12)  # MW por molino
-# Potencia base un aerogenerador sin estelas: 2.1280394653180403 Mw
-# Potencia maxima teorica (25 molinos sin estelas): 53.20098663295101 Mw
-# Todos estos datos recuparados de la siguiente ecuación: P = 0.5 * p * A * Cv * V^3
-#   ρ = 1,225 kg/m3 (Densidad del aire)
-#   Cp = 0,40 (Coeficiente de potencia)
-#   R = 40 m (radio del rotor)
-#   A = πR2 (área generada por el rotor)
-#   v = 12 m/s (velocidad del viento)
-
-# MAXIMO_TEORICO = (P_BASE * N_MOLINOS) / 1000000
+GRID_SIZE = 20 
+N_MOLINOS = 25  
+BETA = 0.08  
+P_BASE = potenciaBase(1.225, 0.40, 40, 12) 
 
 # ==========================================
 # CONFIGURACIÓN DE DEAP (POBLACIÓN, TOOLBOX)
 # ==========================================
 
-# Queremos MAXIMIZAR la energía, por lo que el peso es positivo (1.0)
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individuo", list, fitness=creator.FitnessMax)
 
@@ -75,9 +61,9 @@ def calculo_fitness(individuo):
     potenciaTotal = 0.0
     set_individuo = set(individuo)
 
-    # Penalización por no alcanzar los 25 aerogeneradores solicitado, es por eso que lo aleja ante posibilidad de competir con demas individuos
+    
     if len(set_individuo) != N_MOLINOS:
-        # print(f"DEBUG: len(set_individuo)={len(set_individuo)}, N_MOLINOS={N_MOLINOS}")
+        # Penalización por no alcanzar los 25 aerogeneradores solicitado, es por eso que lo aleja ante posibilidad de competir con demas individuos
         return (0.0,)
 
     for f, c in individuo:
@@ -199,16 +185,9 @@ def mutacion_deslizamiento(individuo, prob_mutacion_gen):
 
 toolbox.register("evaluate", calculo_fitness)
 toolbox.register("mate", cruce_un_punto)
-# cruce_un_punto / cruce_dos_puntos
 toolbox.register("mutate", mutacion_parque, probMutacion=0.1)
-# Mutacion_normal / #mutacion_desplazamiento
-# Probabilidad basada en el individuo mismo, ya que es el individuo seleccionado
 toolbox.register("select", tools.selTournament, tournsize=3)
 
-
-# ==========================================
-# BUCLE PRINCIPAL (EL MOTOR EVOLUTIVO)
-# ==========================================
 # ==========================================
 # MOTOR EVOLUTIVO PARAMETRIZADO
 # ==========================================
@@ -235,10 +214,6 @@ def ejecutar_una_vez(pop_size, cx_pb, mut_pb, n_gen=30, verbose=False):
     )
     return logbook, salon_fama[0]
 
-
-# ==========================================
-# ANÁLISIS ESTADÍSTICO COMPARATIVO
-# ==========================================
 def correr_analisis_comparativo():
     """
     Orquestador que corre múltiples ejecuciones para distintos escenarios
@@ -270,7 +245,7 @@ def correr_analisis_comparativo():
     print(f"Iniciando Benchmarking: {len(escenarios)} escenarios x {N_RUNS} runs...")
 
     for esc in escenarios:
-        print(f"\n🧪 Analizando escenario: {esc['nombre']}...")
+        print(f"\n Analizando escenario: {esc['nombre']}...")
         finales_escenario = []
         convergencias_escenario = []
 
@@ -416,7 +391,7 @@ def experimento_multiple(n_runs=30):
     all_promedios = np.array(all_promedios)
 
     print("=" * 50)
-    print(" ✅ Experimento terminado.")
+    print(" Experimento terminado.")
     print(f"   Mejor absoluto : {np.max(mejores_finales):.2f} MW")
     print(f"   Media final    : {np.mean(mejores_finales):.2f} MW")
     print(f"   Desv. estándar : {np.std(mejores_finales):.2f} MW")
@@ -430,9 +405,7 @@ def experimento_multiple(n_runs=30):
 # 7. VISUALIZACIÓN
 # ==========================================
 def graficar_convergencia_estadistica(all_maximos, all_promedios, n_runs):
-    """
-    Gráfico de convergencia con banda media ± std para el mejor y el promedio.
-    """
+   
     generaciones = np.arange(all_maximos.shape[1])
 
     media_max = np.mean(all_maximos, axis=0)
