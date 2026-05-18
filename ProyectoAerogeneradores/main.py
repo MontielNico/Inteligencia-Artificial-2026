@@ -1,42 +1,37 @@
+from deap import benchmarks
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import random
 import math
 from deap import base, creator, tools, algorithms
+import time
 
 # ==========================================
 # CONSTANTES DEL PROBLEMA
 # ==========================================
-
-
 def potenciaBase(p, Cv, R, V):
     """Función para el calculo de Potencia Base de un Aerogenerador"""
 
     area = math.pi * (R**2)
     return 0.5 * p * area * Cv * (V**3)
 
+GRID_SIZE = 20 
+N_MOLINOS = 25  
+BETA = 0.08  
+P_BASE = potenciaBase(1.225, 0.40, 40, 12) 
 
-GRID_SIZE = 20  # El terreno es una cuadrícula de 20x20 celdas discretas
-N_MOLINOS = 25  # Número fijo de aerogeneradores a colocar
-BETA = 0.08  # 8% de reducción por cada estela
-P_BASE = potenciaBase(1.225, 0.40, 40, 12)  # MW por molino
-# Potencia base un aerogenerador sin estelas: 2.1280394653180403 Mw
-# Potencia maxima teorica (25 molinos sin estelas): 53.20098663295101 Mw
-# Todos estos datos recuparados de la siguiente ecuación: P = 0.5 * p * A * Cv * V^3
-#   ρ = 1,225 kg/m3 (Densidad del aire)
-#   Cp = 0,40 (Coeficiente de potencia)
-#   R = 40 m (radio del rotor)
-#   A = πR2 (área generada por el rotor)
-#   v = 12 m/s (velocidad del viento)
-
-# MAXIMO_TEORICO = (P_BASE * N_MOLINOS) / 1000000
+# Parámetros estándar del Algoritmo Genético
+POP_SIZE_ESTANDAR = 20
+CX_PB_ESTANDAR = 0.50
+MUT_PB_ESTANDAR = 0.05
+N_GEN_ESTANDAR = 40
+N_RUNS_ESTANDAR = 30
 
 # ==========================================
 # CONFIGURACIÓN DE DEAP (POBLACIÓN, TOOLBOX)
 # ==========================================
 
-# Queremos MAXIMIZAR la energía, por lo que el peso es positivo (1.0)
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individuo", list, fitness=creator.FitnessMax)
 
@@ -69,12 +64,13 @@ toolbox.register("poblacion", tools.initRepeat, list, toolbox.individuo)
 def calculo_fitness(individuo):
     """Calcula la energía total producida por el parque considerando las estelas. Función de FITNESS."""
 
-    potenciaBas = potenciaBase(1.225, 0.4, 40, 12)
+    potenciaBas = P_BASE
     potenciaTotal = 0.0
     set_individuo = set(individuo)
 
-    # Penalización por no alcanzar los 25 aerogeneradores solicitado, es por eso que lo aleja ante posibilidad de competir con demas individuos
-    if len(set_individuo) != 25:
+    
+    if len(set_individuo) != N_MOLINOS:
+        # Penalización por no alcanzar los 25 aerogeneradores solicitado, es por eso que lo aleja ante posibilidad de competir con demas individuos
         return (0.0,)
 
     for f, c in individuo:
@@ -196,62 +192,177 @@ def mutacion_deslizamiento(individuo, prob_mutacion_gen):
 
 toolbox.register("evaluate", calculo_fitness)
 toolbox.register("mate", cruce_un_punto)
-# cruce_un_punto / cruce_dos_puntos
 toolbox.register("mutate", mutacion_parque, probMutacion=0.1)
-# Mutacion_normal / #mutacion_desplazamiento
-# Probabilidad basada en el individuo mismo, ya que es el individuo seleccionado
 toolbox.register("select", tools.selTournament, tournsize=3)
 
-
 # ==========================================
-# BUCLE PRINCIPAL (EL MOTOR EVOLUTIVO)
+# MOTOR EVOLUTIVO PARAMETRIZADO
 # ==========================================
-def ejecutar_una_vez(verbose=False):
-    # Parámetros del experimento
-    TAMANO_POBLACION = 20
-    GENERACIONES = 40
-    PROB_CRUCE = 0.5
-    PROB_MUTACION = 0.02
+def ejecutar_una_vez(pop_size, cx_pb, mut_pb, n_gen=30, verbose=False):
+    """Ejecuta una vez el Algoritmo Genético con parámetros específicos."""
+    poblacion = toolbox.poblacion(n=pop_size)
+    salon_fama = tools.HallOfFame(1)
 
-    poblacion = toolbox.poblacion(n=TAMANO_POBLACION)
-    salon_fama = tools.HallOfFame(1)  # Guardará el mejor de todos los tiempos
-
-    # Estadísticas con NumPy
     estadisticas = tools.Statistics(lambda ind: ind.fitness.values[0])
-    estadisticas.register("Promedio", np.mean)
     estadisticas.register("Maximo", np.max)
 
-    print("Iniciando Evolución del Parque Eólico...")
-
-    # Usamos MuPlusLambda (Padres compiten con Hijos) para garantizar Elitismo
+    # eaMuPlusLambda garantiza elitismo (padres e hijos compiten por sobrevivir)
     poblacion, logbook = algorithms.eaMuPlusLambda(
         population=poblacion,
         toolbox=toolbox,
-        mu=TAMANO_POBLACION,
-        lambda_=TAMANO_POBLACION,
-        cxpb=PROB_CRUCE,
-        mutpb=PROB_MUTACION,
-        ngen=GENERACIONES,
+        mu=pop_size,
+        lambda_=pop_size,
+        cxpb=cx_pb,
+        mutpb=mut_pb,
+        ngen=n_gen,
         stats=estadisticas,
         halloffame=salon_fama,
-        verbose=True,
+        verbose=verbose,
     )
+    return logbook, salon_fama[0]
 
-    campeon = salon_fama[0]
-    energia_maxima = campeon.fitness.values[0]
+def correr_analisis_comparativo():
+    """
+    Orquestador que corre múltiples ejecuciones para distintos escenarios
+    y genera gráficos comparativos y una tabla resumen.
+    """
+    estandar = [POP_SIZE_ESTANDAR, CX_PB_ESTANDAR, MUT_PB_ESTANDAR]
+    alta_poblacion = 60
+    alta_cruce = 0.8
+    alta_mutacion = 0.3
+    escenarios = [
+        {"nombre": f"Estándar ({estandar[0]}, {estandar[1]}, {estandar[2]})", "pop": estandar[0], "cx": estandar[1], "mut": estandar[2]},
+        {"nombre": f"Alta Cruce ({estandar[0]}, {alta_cruce}, {estandar[2]})", "pop": estandar[0], "cx": alta_cruce, "mut": estandar[2]},
+        {"nombre": f"Alta Población ({alta_poblacion}, {estandar[1]}, {estandar[2]})", "pop": alta_poblacion, "cx": estandar[1], "mut": estandar[2]},
+        {"nombre": f"Alta Mutación ({estandar[0]}, {estandar[1]}, {alta_mutacion})", "pop": estandar[0], "cx": estandar[1], "mut": alta_mutacion},
+    ] 
 
-    print("=" * 40)
-    print("🥇 ALGORITMO GENETICO TERMINADO")
-    print(f"Mejor Energía Obtenida: {energia_maxima:.2f})")
-    print("=" * 40)
+    N_RUNS = N_RUNS_ESTANDAR  # Ejecuciones por cada escenario para validez estadística
+    N_GEN = N_GEN_ESTANDAR  # Generaciones por cada ejecución
+    resumen_estadistico = []
+    todos_los_resultados = {}
+    todas_las_convergencias = {}
+    
+    mejor_campeon_global = None
+    mejor_fitness_global = -np.inf
 
-    return logbook, campeon
+    # Óptimo de referencia para el Hit Rate (Teórico sin estelas)
+    OPTIMO_REF = (N_MOLINOS * P_BASE) / 1000000
+
+    print(f"Iniciando Benchmarking: {len(escenarios)} escenarios x {N_RUNS} runs...")
+
+    for esc in escenarios:
+        print(f"\n Analizando escenario: {esc['nombre']}...")
+        finales_escenario = []
+        convergencias_escenario = []
+
+        start_time_escenario = time.time()
+
+        for r in range(1, N_RUNS + 1):
+            log, campeon = ejecutar_una_vez(esc["pop"], esc["cx"], esc["mut"], N_GEN)
+            fitness_actual = campeon.fitness.values[0]
+            finales_escenario.append(fitness_actual)
+            convergencias_escenario.append(log.select("Maximo"))
+            
+            # Evaluar y guardar si es el mejor campeón de TODOS los escenarios
+            if fitness_actual > mejor_fitness_global:
+                mejor_fitness_global = fitness_actual
+                mejor_campeon_global = campeon
+                    
+            if r % 10 == 0:
+                print(f"  Progreso: {r}/{N_RUNS} ejecuciones completadas.")
+
+        tiempo_total = time.time() - start_time_escenario
+
+        # --- Cálculo de Métricas ---
+        mejor = np.max(finales_escenario)
+        media = np.mean(finales_escenario)
+        std = np.std(finales_escenario)
+
+        # Hit Rate: % de veces que llega al óptimo (con margen de error de 0.01)
+        hits = sum(1 for f in finales_escenario if f >= (OPTIMO_REF - 0.01))
+        hit_rate = (hits / N_RUNS) * 100
+
+        # Confiabilidad: Proporción entre media y mejor resultado
+        confiabilidad = (media / mejor * 100) if mejor > 0 else 0
+
+        resumen_estadistico.append(
+            {
+                "Config": esc["nombre"],
+                "Mejor": mejor,
+                "Media": media,
+                "Std": std,
+                "Hit Rate": hit_rate,
+                "Confiabilidad": confiabilidad,
+                "T. Total": tiempo_total,
+            }
+        )
+
+        todos_los_resultados[esc["nombre"]] = finales_escenario
+        todas_las_convergencias[esc["nombre"]] = np.mean(
+            convergencias_escenario, axis=0
+        )
+
+    # Imprimir Tabla y generar gráficos
+    imprimir_tabla_resumen(resumen_estadistico)
+    graficar_resultados_comparativos(todos_los_resultados, todas_las_convergencias, N_RUNS)
+
+    if mejor_campeon_global is not None:
+        graficar_mapa_campeon(mejor_campeon_global)
+
+
+def imprimir_tabla_resumen(datos):
+    """Muestra una tabla formateada con los resultados del análisis."""
+    print("\n" + "=" * 115)
+    print(
+        f"{'ESCENARIO':<30} | {'MEJOR (MW)':<10} | {'MEDIA (MW)':<10} | {'STD':<8} | {'HIT%':<7} | {'CONF%':<7} | {'TIEMPO'}"
+    )
+    print("-" * 115)
+    for d in datos:
+        print(
+            f"{d['Config']:<30} | {d['Mejor']:<10.3f} | {d['Media']:<10.3f} | {d['Std']:<8.3f} | {d['Hit Rate']:<6.1f}% | {d['Confiabilidad']:<6.1f}% | {d['T. Total']:>6.2f}s"
+        )
+    print("=" * 115 + "\n")
+
+
+def graficar_resultados_comparativos(resultados, convergencias, n_runs):
+    """Genera y guarda los gráficos de la comparativa."""
+
+    # 1. Boxplot Comparativo (Distribución de soluciones finales)
+    plt.figure(figsize=(12, 7))
+    sns.boxplot(data=list(resultados.values()), palette="Set2")
+    plt.xticks(range(len(resultados)), list(resultados.keys()), rotation=15)
+    plt.title(
+        "Comparativa Estadística: Calidad de Solución Final por Escenario", fontsize=13
+    )
+    plt.ylabel("Producción de Energía (MW)")
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    plt.savefig("2_Comparativa_Boxplot.png", dpi=300)
+    print("Gráfico guardado: 2_Comparativa_Boxplot.png")
+
+    # 2. Curvas de Convergencia (Velocidad de aprendizaje)
+    plt.figure(figsize=(12, 7))
+    for nombre, curva in convergencias.items():
+        plt.plot(curva, label=nombre, linewidth=2.5)
+    plt.title(
+        f"Comparativa: Velocidad de Convergencia (Media de {n_runs} ejecuciones)", fontsize=13
+    )
+    plt.xlabel("Generación")
+    plt.ylabel("Energía Máxima (MW)")
+    plt.legend()
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    plt.savefig("1_Comparativa_Convergencia.png", dpi=300)
+    print("Gráfico guardado: 1_Comparativa_Convergencia.png")
+
+    plt.show()
 
 
 # ==========================================
 # 6. EXPERIMENTO: N_RUNS EJECUCIONES
 # ==========================================
-def experimento_multiple(n_runs=30):
+def experimento_multiple(pop_size=POP_SIZE_ESTANDAR, cx_pb=CX_PB_ESTANDAR, mut_pb=MUT_PB_ESTANDAR, n_gen=N_GEN_ESTANDAR, n_runs=N_RUNS_ESTANDAR):
     """
     Corre el AG n_runs veces independientes.
     Devuelve:
@@ -268,7 +379,7 @@ def experimento_multiple(n_runs=30):
     mejor_fitness_global = -np.inf
 
     for run in range(1, n_runs + 1):
-        logbook, campeon = ejecutar_una_vez(verbose=False)
+        logbook, campeon = ejecutar_una_vez(pop_size, cx_pb, mut_pb, n_gen=n_gen, verbose=False)
         maximos = logbook.select("Maximo")
         promedios = logbook.select("Promedio")
 
@@ -287,7 +398,7 @@ def experimento_multiple(n_runs=30):
     all_promedios = np.array(all_promedios)
 
     print("=" * 50)
-    print(" ✅ Experimento terminado.")
+    print(" Experimento terminado.")
     print(f"   Mejor absoluto : {np.max(mejores_finales):.2f} MW")
     print(f"   Media final    : {np.mean(mejores_finales):.2f} MW")
     print(f"   Desv. estándar : {np.std(mejores_finales):.2f} MW")
@@ -301,9 +412,7 @@ def experimento_multiple(n_runs=30):
 # 7. VISUALIZACIÓN
 # ==========================================
 def graficar_convergencia_estadistica(all_maximos, all_promedios, n_runs):
-    """
-    Gráfico de convergencia con banda media ± std para el mejor y el promedio.
-    """
+   
     generaciones = np.arange(all_maximos.shape[1])
 
     media_max = np.mean(all_maximos, axis=0)
@@ -348,15 +457,6 @@ def graficar_convergencia_estadistica(all_maximos, all_promedios, n_runs):
         label="Banda ± 1 Desv. Estándar (Promedio)",
     )
 
-    # --- Referencia teórica ---
-    ax.axhline(
-        y=53,
-        color="red",
-        linestyle=":",
-        linewidth=1.5,
-
-    )
-
     ax.set_title(
         f"Curva de Convergencia Estadística — {n_runs} Ejecuciones Independientes\n"
         "Parque Eólico — Algoritmo Genético (eaMuPlusLambda)",
@@ -368,12 +468,12 @@ def graficar_convergencia_estadistica(all_maximos, all_promedios, n_runs):
     ax.grid(True, linestyle="--", alpha=0.6)
 
     plt.tight_layout()
-    plt.savefig("3_Convergencia_Estadistica.png", dpi=300)
+    plt.savefig("2_Convergencia_Estadistica.png", dpi=300)
     plt.show()
-    print("Gráfico guardado: 3_Convergencia_Estadistica.png")
+    print("Gráfico guardado: 2_Convergencia_Estadistica.png")
 
 
-def graficar_boxplot_finales(mejores_finales):
+def graficar_boxplot_finales(mejores_finales, n_runs=30):
     """Boxplot de los mejores fitness finales de cada ejecución."""
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.boxplot(
@@ -383,9 +483,8 @@ def graficar_boxplot_finales(mejores_finales):
         boxprops=dict(facecolor="lightgreen", color="green"),
         medianprops=dict(color="darkgreen", linewidth=2),
     )
-    ax.axhline(y=53.25, color="red", linestyle=":", label="Máximo Teórico")
     ax.set_title(
-        "Distribución de Mejores Soluciones Finales\n(30 ejecuciones independientes)"
+        f"Distribución de Mejores Soluciones Finales\n({n_runs} ejecuciones independientes)"
     )
     ax.set_ylabel("Producción de Energía (MW)")
     ax.set_xticks([1])
@@ -393,9 +492,9 @@ def graficar_boxplot_finales(mejores_finales):
     ax.legend()
     ax.grid(True, axis="y", linestyle="--", alpha=0.6)
     plt.tight_layout()
-    plt.savefig("4_Boxplot_Finales.png", dpi=300)
+    plt.savefig("3_Boxplot_Finales.png", dpi=300)
     plt.show()
-    print("Gráfico guardado: 4_Boxplot_Finales.png")
+    print("Gráfico guardado: 3_Boxplot_Finales.png")
 
 
 def graficar_mapa_campeon(mejor_campeon):
@@ -408,10 +507,20 @@ def graficar_mapa_campeon(mejor_campeon):
         matriz_terreno, cmap="YlGn", cbar=False, linewidths=0.5, linecolor="gray"
     )
 
-    sprite = plt.imread(r"images/molino.png")
-
-    for x, y in mejor_campeon:
-        plt.imshow(sprite, extent=[x + 0.1, x + 0.9, y + 0.9, y + 0.1], zorder=10)
+    import os
+    # Intentamos primero con la ruta absoluta/carpeta superior, luego con ruta local
+    if os.path.exists(r"ProyectoAerogeneradores\images\molino.png"):
+        sprite = plt.imread(r"ProyectoAerogeneradores\images\molino.png")
+        for x, y in mejor_campeon:
+            plt.imshow(sprite, extent=[x + 0.1, x + 0.9, y + 0.9, y + 0.1], zorder=10)
+    elif os.path.exists(r"images\molino.png"):
+        sprite = plt.imread(r"images\molino.png")
+        for x, y in mejor_campeon:
+            plt.imshow(sprite, extent=[x + 0.1, x + 0.9, y + 0.9, y + 0.1], zorder=10)
+    else:
+        print("Aviso: No se encontró la imagen del molino. Usando marcadores alternativos.")
+        for x, y in mejor_campeon:
+            plt.plot(x + 0.5, y + 0.5, marker='*', color='blue', markersize=15, zorder=10)
 
     plt.title(
         f"Disposición Óptima del Parque Eólico\n"
@@ -419,7 +528,7 @@ def graficar_mapa_campeon(mejor_campeon):
     )
     plt.xlabel("Oeste → Este")
     plt.ylabel("Norte → Sur")
-    plt.savefig("2_Mapa_Parque_Eolico.png", dpi=300)
+    plt.savefig("3_Mapa_Parque_Eolico.png", dpi=300)
     plt.show()
 
 
@@ -427,27 +536,5 @@ def graficar_mapa_campeon(mejor_campeon):
 # PUNTO DE ENTRADA
 # ==========================================
 if __name__ == "__main__":
-    N_RUNS = 30  # Valor para las ejecuciones
-
-    # Correr experimento
-    all_maximos, all_promedios, mejores_finales, mejor_campeon = experimento_multiple(
-        N_RUNS
-    )
-
-    # Gráfico 1: Convergencia con banda estadística (el que pedía el proyecto)
-    graficar_convergencia_estadistica(all_maximos, all_promedios, N_RUNS)
-
-    # Gráfico 2: Mapa del mejor parque encontrado
-    graficar_mapa_campeon(mejor_campeon)
-
-    # Gráfico 3: Boxplot de resultados finales (análisis estadístico)
-    graficar_boxplot_finales(mejores_finales)
-
-    # Resumen estadístico en consola
-    print("\n📊 RESUMEN ESTADÍSTICO COMPLETO:")
-    print(f"   N ejecuciones  : {N_RUNS}")
-    print(f"   Media          : {np.mean(mejores_finales):.4f} MW")
-    print(f"   Desv. Estándar : {np.std(mejores_finales):.4f} MW")
-    print(f"   Mínimo         : {np.min(mejores_finales):.4f} MW")
-    print(f"   Máximo         : {np.max(mejores_finales):.4f} MW")
-    print(f"   Mediana        : {np.median(mejores_finales):.4f} MW")
+    # Ejecutamos el análisis comparativo completo
+    correr_analisis_comparativo()
