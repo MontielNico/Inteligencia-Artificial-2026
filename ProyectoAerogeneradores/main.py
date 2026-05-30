@@ -323,11 +323,11 @@ def correr_analisis_comparativo():
 
 def realizar_test_normalidad_ks(todos_los_resultados):
     """
-    Aplica el test de normalidad de Kolmogorov-Smirnov sobre los datos en memoria,
-    imprimiendo en consola si son o no normales de forma directa.
+    Aplica el test de normalidad de Kolmogorov-Smirnov sobre los datos para verificar la normalidad de los datos
     """
     print("\n" + "=" * 80)
-    print(" ANÁLISIS DE NORMALIDAD (TEST DE KOLMOGOROV-SMIRNOV)")
+    print(" ANÁLISIS DE NORMALIDAD TEST DE KOLMOGOROV-SMIRNOV")
+    print("Nivel de significancia (alpha): 0.05\n")
     print("=" * 80)
     
     alpha = 0.05
@@ -351,8 +351,7 @@ def realizar_test_normalidad_ks(todos_los_resultados):
         resultado_str = "SÍ ES NORMAL (Éxito)" if es_normal else "NO ES NORMAL (Fallo)"
         
         print(f"  Estadístico KS: {stat:.5f} | p-valor: {p_val:.5e}")
-        print(f"  Resultado: {resultado_str}")
-        print("-" * 80)
+        print(f"  Resultado: {resultado_str} \n")
     print("=" * 80 + "\n")
 
 
@@ -362,11 +361,12 @@ def realizar_test_kruskal_wallis(todos_los_resultados):
     de los 4 escenarios para verificar si son estadísticamente iguales entre sí.
     """
     print("\n" + "=" * 80)
-    print(" ANÁLISIS COMPARATIVO DE DISTRIBUCIONES: TEST DE KRUSKAL-WALLIS")
+    print(" ANÁLISIS: TEST DE KRUSKAL-WALLIS")
     print("=" * 80)
-    print("Hipótesis Nula (H0): Los 4 escenarios tienen distribuciones idénticas (medianas iguales).")
-    print("Hipótesis Alternativa (H1): Al menos un escenario difiere significativamente.\n")
-    
+    print("Hipótesis Nula (H0): Las medianas de la potencia energética obtenida (MW) son idénticas en todos los escenarios evaluados (el comportamiento del algoritmo no depende de la configuración).")
+    print("Hipótesis Alternativa (H1): Al menos una de las configuraciones presenta una mediana de potencia significativamente distinta a las demás (existe una configuración superior o inferior al resto).")
+    print("Nivel de significancia (alpha): 0.05\n")
+
     alpha = 0.05
     listas_valores = list(todos_los_resultados.values())
     
@@ -393,8 +393,8 @@ def realizar_test_wilcoxon_parejas(todos_los_resultados):
     print("\n" + "=" * 80)
     print(" ANÁLISIS COMPARATIVO EN PAREJAS: TEST DE WILCOXON")
     print("=" * 80)
-    print("Hipótesis Nula (H0): No hay diferencia sistemática entre ambos escenarios.")
-    print("Hipótesis Alternativa (H1): Existe una diferencia significativa entre ambos escenarios.")
+    print("Hipótesis Nula (H0): No existe diferencia estadísticamente significativa entre las medianas de potencia de los dos escenarios comparados (el par de escenarios es equivalente).")
+    print("Hipótesis Alternativa (H1): Existe una diferencia estadísticamente significativa entre las medianas de potencia de los dos escenarios comparados.")
     print("Nivel de significancia (alpha): 0.05\n")
     
     nombres = list(todos_los_resultados.keys())
@@ -418,7 +418,7 @@ def realizar_test_wilcoxon_parejas(todos_los_resultados):
             continue
             
         try:
-            # Test Wilcoxon Signed-Rank
+            # Test Wilcoxon
             stat, p_val = stats.wilcoxon(val1, val2)
             
             # Interpretación
@@ -427,13 +427,12 @@ def realizar_test_wilcoxon_parejas(todos_los_resultados):
             
             print(f"  Estadístico Wilcoxon: {stat:.1f}")
             print(f"  p-valor: {p_val:.5e}")
-            print(f"  Resultado: {resultado_str}")
+            print(f"  Resultado: {resultado_str} \n")
             
         except Exception as e:
             # Control por si falla por otra razón estadística
             print(f"  No se pudo realizar el test Wilcoxon: {e}")
             
-        print("-" * 80)
     print("=" * 80 + "\n")
 
 
