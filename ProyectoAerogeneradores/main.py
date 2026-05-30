@@ -6,6 +6,7 @@ import random
 import math
 from deap import base, creator, tools, algorithms
 import time
+import scipy.stats as stats
 
 # ==========================================
 # CONSTANTES DEL PROBLEMA
@@ -310,8 +311,137 @@ def correr_analisis_comparativo():
     if mejor_campeon_global is not None:
         graficar_mapa_campeon(mejor_campeon_global)
 
+    # Realizar análisis de normalidad (KS)
+    realizar_test_normalidad_ks(todos_los_resultados)
+
+    # Realizar análisis comparativo de distribuciones (Kruskal-Wallis)
+    realizar_test_kruskal_wallis(todos_los_resultados)
+
+    # Realizar análisis comparativo por parejas (Wilcoxon)
+    realizar_test_wilcoxon_parejas(todos_los_resultados)
+
+
+def realizar_test_normalidad_ks(todos_los_resultados):
+    """
+    Aplica el test de normalidad de Kolmogorov-Smirnov sobre los datos en memoria,
+    imprimiendo en consola si son o no normales de forma directa.
+    """
+    print("\n" + "=" * 80)
+    print(" ANÁLISIS DE NORMALIDAD (TEST DE KOLMOGOROV-SMIRNOV)")
+    print("=" * 80)
+    
+    alpha = 0.05
+    for nombre, valores in todos_los_resultados.items():
+        arr_valores = np.array(valores)
+        media = np.mean(arr_valores)
+        desv = np.std(arr_valores, ddof=1)
+        
+        print(f"Escenario: {nombre}")
+        
+        # Caso de varianza cero
+        if desv == 0:
+            print("  Resultado: NO ES NORMAL (Varianza nula, todos los valores son idénticos)")
+            print("-" * 80)
+            continue
+            
+        # Test Kolmogorov-Smirnov contra una distribución normal de misma media y desviación estándar
+        stat, p_val = stats.kstest(arr_valores, 'norm', args=(media, desv))
+        
+        es_normal = p_val >= alpha
+        resultado_str = "SÍ ES NORMAL (Éxito)" if es_normal else "NO ES NORMAL (Fallo)"
+        
+        print(f"  Estadístico KS: {stat:.5f} | p-valor: {p_val:.5e}")
+        print(f"  Resultado: {resultado_str}")
+        print("-" * 80)
+    print("=" * 80 + "\n")
+
+
+def realizar_test_kruskal_wallis(todos_los_resultados):
+    """
+    Aplica el test no paramétrico de Kruskal-Wallis sobre las distribuciones 
+    de los 4 escenarios para verificar si son estadísticamente iguales entre sí.
+    """
+    print("\n" + "=" * 80)
+    print(" ANÁLISIS COMPARATIVO DE DISTRIBUCIONES: TEST DE KRUSKAL-WALLIS")
+    print("=" * 80)
+    print("Hipótesis Nula (H0): Los 4 escenarios tienen distribuciones idénticas (medianas iguales).")
+    print("Hipótesis Alternativa (H1): Al menos un escenario difiere significativamente.\n")
+    
+    alpha = 0.05
+    listas_valores = list(todos_los_resultados.values())
+    
+    # Ejecución del test de Kruskal-Wallis
+    stat, p_val = stats.kruskal(*listas_valores)
+    
+    # Interpretación
+    son_iguales = p_val >= alpha
+    resultado_str = "SÍ SON IGUALES (No se rechaza H0 - No hay diferencias significativas)" if son_iguales else "NO SON IGUALES (Se rechaza H0 - Hay diferencias significativas)"
+    
+    print(f"Estadístico H de Kruskal-Wallis: {stat:.5f}")
+    print(f"p-valor: {p_val:.5e}")
+    print(f"Resultado: {resultado_str}")
+    print("=" * 80 + "\n")
+
+
+def realizar_test_wilcoxon_parejas(todos_los_resultados):
+    """
+    Realiza el test de rangos con signo de Wilcoxon entre todos los pares posibles 
+    de los 4 escenarios para verificar si existen diferencias significativas entre ellas.
+    """
+    import itertools
+    
+    print("\n" + "=" * 80)
+    print(" ANÁLISIS COMPARATIVO EN PAREJAS: TEST DE WILCOXON")
+    print("=" * 80)
+    print("Hipótesis Nula (H0): No hay diferencia sistemática entre ambos escenarios.")
+    print("Hipótesis Alternativa (H1): Existe una diferencia significativa entre ambos escenarios.")
+    print("Nivel de significancia (alpha): 0.05\n")
+    
+    nombres = list(todos_los_resultados.keys())
+    pares = list(itertools.combinations(nombres, 2))
+    
+    alpha = 0.05
+    
+    for esc1, esc2 in pares:
+        val1 = np.array(todos_los_resultados[esc1])
+        val2 = np.array(todos_los_resultados[esc2])
+        
+        print(f"Comparación: {esc1} vs {esc2}")
+        
+        # Verificar si todos los elementos son idénticos en diferencia (varianza cero de la diferencia)
+        diff = val1 - val2
+        if np.all(diff == 0):
+            print("  Estadístico Wilcoxon: N/A (Muestras idénticas)")
+            print("  p-valor: 1.00000e+00")
+            print("  Resultado: SIN DIFERENCIA (Fallo - Muestras idénticas)")
+            print("-" * 80)
+            continue
+            
+        try:
+            # Test Wilcoxon Signed-Rank
+            stat, p_val = stats.wilcoxon(val1, val2)
+            
+            # Interpretación
+            hay_diferencia = p_val < alpha
+            resultado_str = "DIFERENCIA DETECTADA (Éxito - Se rechaza H0)" if hay_diferencia else "SIN DIFERENCIA (Fallo - No se rechaza H0)"
+            
+            print(f"  Estadístico Wilcoxon: {stat:.1f}")
+            print(f"  p-valor: {p_val:.5e}")
+            print(f"  Resultado: {resultado_str}")
+            
+        except Exception as e:
+            # Control por si falla por otra razón estadística
+            print(f"  No se pudo realizar el test Wilcoxon: {e}")
+            
+        print("-" * 80)
+    print("=" * 80 + "\n")
+
+
+
+
 
 def imprimir_tabla_resumen(datos):
+
     """Muestra una tabla formateada con los resultados del análisis."""
     print("\n" + "=" * 115)
     print(
