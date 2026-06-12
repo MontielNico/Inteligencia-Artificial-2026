@@ -106,7 +106,10 @@ def graficar_politica(valores, politica, env):
 
 
 # Configuración del entorno y cálculo
-env = gym.make('FrozenLake-v1', is_slippery=False, render_mode="human")
+# Modificar is_slippery para modo estocástico
+# True = modo estocástico, False = modo determinístico
+MODO_ESTOCASTICO = True
+env = gym.make('FrozenLake-v1', is_slippery=MODO_ESTOCASTICO, render_mode="human")
 
 valores_optimos, politica_optima = value_iteration(env)
 
@@ -116,7 +119,31 @@ print("Politica Optima:", politica_optima)
 # Graficar la política óptima y el mapa de calor
 graficar_politica(valores_optimos, politica_optima, env)
 
-# Ejecución con politica óptima
+# Evaluación de Tasa de Éxito en 1000 episodios
+episodios_eval = 1000
+victorias = 0
+env_eval = gym.make('FrozenLake-v1', is_slippery=MODO_ESTOCASTICO, render_mode=None)
+
+print(f"\nEvaluando tasa de éxito en {episodios_eval} episodios (Modo estocástico: {MODO_ESTOCASTICO})...")
+for ep in range(episodios_eval):
+    obs, info = env_eval.reset()
+    terminado = False
+    
+    while not terminado:
+        accion = int(politica_optima[obs])
+        obs, recompensa, done, trunc, info = env_eval.step(accion)
+        terminado = done or trunc
+        
+        if done and recompensa == 1.0:
+            victorias += 1
+
+env_eval.close()
+tasa_exito = (victorias / episodios_eval) * 100
+print(f"Tasa de éxito de la política óptima: {tasa_exito:.2f}% ({victorias} victorias)")
+
+
+# Ejecución con politica óptima (visualización de 1 episodio)
+print("\nVisualizando un episodio final...")
 observacion, info = env.reset()
 
 episodio_terminado = False
@@ -129,5 +156,5 @@ while not episodio_terminado:
     recompensa_total += recompensa
     episodio_terminado = episodio_terminado or truncamiento
 
-print(f"Recompensa obtenida: {recompensa_total}")
+print(f"Recompensa obtenida en la visualización: {recompensa_total}")
 env.close()
